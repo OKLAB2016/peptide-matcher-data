@@ -29,7 +29,7 @@ RHEYFRRILCQMIGRWVEAGEAPADINLLGEMVKNICFNNARDYFAIELN
 In addition to the record identifier and description, the definition line contains additional data for each position of the protein:
 
 | Field           | Description                        | Source    | Values                                            | Encoding               |
-|:---------------:|:----------------------------------:|:---------:|:------------------------------------- -----------:|:----------------------:|
+|:---------------:|:----------------------------------:|:---------:|:-------------------------------------------------:|:----------------------:|
 | `confidence`    | pLDDT confidence scores            | alphafold | Integers 1-100                                    | Hexadecimal numbers    |
 | `secstruct`     | Secondary structure                | dssp      | [dssp codes](https://swift.cmbi.umcn.nl/gv/dssp/DSSP_2.html) | CIGAR-like compression |
 | `accessibility` | Relative solvent accessibility     | dssp      | `ASA/max(ASA)` where max. values for abs. solvent accessibility are the theoretical maxima from [Tien et al 2013](https://doi.org/10.1371/journal.pone.0080635) | Hexadecimal numbers |
