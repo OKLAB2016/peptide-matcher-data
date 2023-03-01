@@ -31,17 +31,17 @@ In addition to the record identifier and description, the definition line contai
 | Field           | Description                        | Source    | Values                                            | Encoding               |
 |:---------------:|:----------------------------------:|:---------:|:------------------------------------- -----------:|:----------------------:|
 | `confidence`    | pLDDT confidence scores            | alphafold | Integers 1-100                                    | Hexadecimal numbers    |
-| `secstruct`     | Secondary structure                | dssp      | dssp codes                                        | CIGAR-like compression |
+| `secstruct`     | Secondary structure                | dssp      | [dssp codes](https://swift.cmbi.umcn.nl/gv/dssp/DSSP_2.html) | CIGAR-like compression |
 | `accessibility` | Relative solvent accessibility     | dssp      | `ASA/max(ASA)` where max. values for abs. solvent accessibility are the theoretical maxima from [Tien et al 2013](https://doi.org/10.1371/journal.pone.0080635) | Hexadecimal numbers |
-| `transmembrane` | Transmembrane regions              | uniprot   | T: transmembrane, S: signal peptide, -: otherwise | CIGAR-like compression |              |
+| `transmembrane` | Transmembrane regions              | uniprot   | T: transmembrane, S: signal peptide, -: otherwise | CIGAR-like compression |
 
 Two encoding are used to compress the data to short strings:
 
 * 2-digit hexadecimal numbers concatenated into a single string. It is obtained as `encoded = ''.join('%02x' % x for x in scores)` and can be decoded as: `scores = [ int(encoded[i:i+2], 16) for i in range(0, len(encoded), 2) ]`.
-* The [CIGAR](http://samtools.github.io/hts-specs/SAMv1.pdf)-like compression. It is a simple format of the form `<int><char><int><char>...` where the integers signify the number of times the characters appear consecutively. The encoding is obtained as `encoded = ''.join(str(sum(1 for x in g)) + k for k, g in itertools.groupby(chars))` and can be decoded as `chars = list(itertools.chain(*[ [k] * int(n) for n, k in re.findall('(\d+)(.)', encoded) ]))`.
+* [CIGAR](http://samtools.github.io/hts-specs/SAMv1.pdf)-like compression. It is a simple format of the form `<int><char><int><char>...` where the integers signify the number of times the characters appear consecutively. The encoding is obtained as `encoded = ''.join(str(sum(1 for x in g)) + k for k, g in itertools.groupby(chars))` and can be decoded as `chars = list(itertools.chain(*[ [k] * int(n) for n, k in re.findall('(\d+)(.)', encoded) ]))`.
 
 ## How to run
 
-Run as follows: `snakemake -c$CPUS --resources unisave=5 --config organism=$ORGANISM` where `$ORGANISM` is the organisms code in the form `UP000000589_10090_MOUSE` (uniprot proteome, taxid, short name) as appears on the alphafold's website.
+Run as follows: `snakemake -c$CPUS --resources unisave=5 --config organism=$ORGANISM` where `$ORGANISM` is the organisms code in the form `UP000000589_10090_MOUSE` (uniprot proteome, taxid, short name) as appears on the alphafold's website and `$CPUS` is the number of threads you want to allocate for parallel execution.
 
-The default configuration file is in `workflow/config.yml`, among the relevant values there is the alphafold version.
+The default configuration file is in `workflow/config.yml`. The most relevant value to change there is the alphafold version.
