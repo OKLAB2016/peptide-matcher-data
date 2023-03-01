@@ -1,0 +1,7 @@
+alphafold:
+  version: 4
+  host: 'https://ftp.ebi.ac.uk/pub/databases/alphafold/v{version}/{organism}_v{version}.tar'
+unisave:
+  host: "https://rest.uniprot.org/unisave/"
+uniprot:
+  date_max: '25-May-2022'

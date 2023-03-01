@@ -1,0 +1,116 @@
+
+from collections import defaultdict
+from os import listdir, path
+
+configfile: "workflow/config.yml"
+
+alphafold_host = config['alphafold']['host']
+af_ver         = config['alphafold']['version']
+
+rule all:
+    input:
+        "database/{organism}.fasta".format(organism = config['organism'])
+
+rule dload_history:
+    output:
+        "analysis/history/{organism}/{acc}.tsv"
+    resources:
+        unisave = 1
+    shell:
+        "wget -O {output} '{config[unisave][host]}/{wildcards.acc}?download=true&format=tsv'"
+
+checkpoint dload_alphafold:
+    output:
+        directory("analysis/alphafold/{organism}")
+    params:
+        url = lambda w: alphafold_host.format(version = af_ver, organism = w.organism)
+    shell:
+        "mkdir -p {output} && curl -sL {params.url:q} | tar xf - -C {output} --wildcards --no-anchored '*.pdb.gz'"
+
+af_parts = defaultdict(list)
+def collect_af_parts_and_get_parsed(w):
+    global af_parts
+    af_dir = checkpoints.dload_alphafold.get(**w).output[0]
+    files = []
+    for fname in listdir(af_dir):
+        if fname.endswith('.pdb.gz'):
+            match = re.match('AF-(\w+)-F(\d+)-model', fname)
+            acc, part = match.groups()
+            af_parts[acc].append(part)
+            if part == '1':
+                csv_file = "analysis/parsed/{organism}/{acc}.csv".format(organism = w.organism, acc = acc)
+                files.append(csv_file)
+    return files
+
+def get_uniprot_files(w):
+    af_dir = checkpoints.dload_alphafold.get(**w).output[0]
+    files = []
+    for fname in listdir(af_dir):
+        if fname.endswith('.pdb.gz'):
+            match = re.match('AF-(\w+)-F(\d+)-model', fname)
+            acc, part = match.groups()
+            if part == '1':
+                dat_file = "analysis/uniprot/{organism}/{acc}.dat".format(organism = w.organism, acc = acc)
+                files.append(dat_file)
+    return files
+
+def dssp_parts(w):
+    global af_parts
+    files = []
+    for part in af_parts[w.acc]:
+        dssp_name = "analysis/dssp/{organism}/AF-{acc}-F{part}-model_v{ver}.txt".format(organism = w.organism, acc = w.acc, part = part, ver = af_ver)
+        files.append(dssp_name)
+    return files
+
+def pdb_parts(w):
+    global af_parts
+    files = []
+    for part in af_parts[w.acc]:
+        pdb_name = "analysis/alphafold/{organism}/AF-{acc}-F{part}-model_v{ver}.pdb.gz".format(organism = w.organism, acc = w.acc, part = part, ver = af_ver)
+        files.append(pdb_name)
+    return files
+
+rule dload_version:
+    input:
+        pdb_dir = "analysis/alphafold/{organism}/",
+        history = "analysis/history/{organism}/{acc}.tsv"
+    output:
+        "analysis/uniprot/{organism}/{acc}.dat"
+    params:
+        pdb_files = pdb_parts
+    resources:
+        unisave = 1
+    priority:
+        2
+    script:
+        "scripts/dload_version.py"
+
+rule dssp:
+    input:
+        "analysis/alphafold/{organism}/"
+    output:
+        "analysis/dssp/{organism}/{pdb}.txt"
+    params:
+        pdb_file = "analysis/alphafold/{organism}/{pdb}.pdb.gz"
+    shell:
+        "gzip -cd {params.pdb_file} | dssp -i /dev/stdin -o {output}"
+
+rule parse:
+    input:
+        pdb_dir = "analysis/alphafold/{organism}/",
+        dssp_files = dssp_parts
+    output:
+        "analysis/parsed/{organism}/{acc}.csv"
+    params:
+        pdb_files = pdb_parts
+    script:
+        "scripts/parse.py"
+
+rule collect:
+    input:
+        parsed = collect_af_parts_and_get_parsed,
+	uniprot = get_uniprot_files
+    output:
+        "database/{organism}.fasta"
+    script:
+        "scripts/collect.py"
